@@ -6,7 +6,8 @@ from flask import Flask, request
 from time import sleep
 import threading
 from Text2Speech import Text2Speech
-from Logger import Logger
+# from Logger import Logger
+import GLOBAL
 
 class QQBot:
     def __init__(self):
@@ -19,7 +20,7 @@ class QQBot:
         data = {"verifyKey": auth_key}
         url = self.addr + 'verify'
         res = requests.post(url, data=json.dumps(data)).json()
-        logger.DebugLog(res)
+        GLOBAL.logger.DebugLog(res)
         if res['code'] == 0:
             return res['session']
         return None
@@ -29,7 +30,7 @@ class QQBot:
         data = {"sessionKey": session, "qq": qq}
         url = self.addr + 'bind'
         res = requests.post(url, data=json.dumps(data)).json()
-        logger.DebugLog(res)
+        GLOBAL.logger.DebugLog(res)
         if res['code'] == 0:
             self.session = session
             return True
@@ -41,7 +42,7 @@ class QQBot:
         data = {"sessionKey": session, "qq": qq}
         url = self.addr + 'release'
         res = requests.post(url, data=json.dumps(data)).json()
-        logger.DebugLog(res)
+        GLOBAL.logger.DebugLog(res)
         if res['code'] == 0:
             return True
         return False
@@ -67,7 +68,7 @@ class QQBot:
                 elif type == 'Face':
                     text = item['messageChain'][-1]['faceId']
                 else:
-                    logger.TraceLog(">> 当前消息类型暂不支持转发：=> " + type)
+                    GLOBAL.logger.TraceLog(">> 当前消息类型暂不支持转发：=> " + type)
                     continue
                 name = item['sender']['memberName']
                 group_id = str(item['sender']['group']['id'])
@@ -138,7 +139,7 @@ class QQBot:
         if type == 'Plain':
             content3, tmout = getGPTMsg("你是一个可爱的猫娘，你会傲娇地回答问题：", text)
 
-        logger.DebugLog(">> 消息类型：" + type)
+        GLOBAL.logger.DebugLog(">> 消息类型：" + type)
         if type == 'Plain':
             # message = [{"type": type, "text": content1 + '\n' + content3}]
             message = [{"type": type, "text": content3}]
@@ -150,7 +151,7 @@ class QQBot:
             message = [{"type": 'Plain', "text": content2},
                        {"type": type, "faceId": text}]
         else:
-            logger.TraceLog(">> 当前消息类型暂不支持回复：=> " + type)
+            GLOBAL.logger.TraceLog(">> 当前消息类型暂不支持回复：=> " + type)
             return 0
         data = {
             "sessionKey": session,
@@ -158,14 +159,14 @@ class QQBot:
             'quote': ReplyMsgId,
             "messageChain": message
         }
-        logger.DebugLog(">> 消息内容：" + str(data))
+        GLOBAL.logger.DebugLog(">> 消息内容：" + str(data))
         url = self.addr + 'sendGroupMessage'
         try:
             res = requests.post(url, data=json.dumps(data)).json()
         except:
-            logger.DebugLog(">> 回复失败")
+            GLOBAL.logger.DebugLog(">> 回复失败")
             return 0
-        logger.DebugLog(">> 请求返回：" + str(res))
+        GLOBAL.logger.DebugLog(">> 请求返回：" + str(res))
         if res['code'] == 0:
             return res['messageId']
         return 0
@@ -176,14 +177,14 @@ class QQBot:
             "target": target,
             'messageId': msgId
         }
-        logger.DebugLog(">> 撤回消息：" + str(msgId))
+        GLOBAL.logger.DebugLog(">> 撤回消息：" + str(msgId))
         url = self.addr + 'recall'
         try:
             res = requests.post(url, data=json.dumps(data)).json()
         except:
-            logger.DebugLog(">> 撤回失败")
+            GLOBAL.logger.DebugLog(">> 撤回失败")
             return 0
-        logger.DebugLog(">> 请求返回：" + str(res))
+        GLOBAL.logger.DebugLog(">> 请求返回：" + str(res))
         if res['code'] == 0:
             return res['msg']
 
@@ -194,14 +195,14 @@ class QQBot:
             "memberId": memberId,
             'time': mute_time
         }
-        logger.DebugLog(">> 禁言成员：" + str(memberId))
+        GLOBAL.logger.DebugLog(">> 禁言成员：" + str(memberId))
         url = self.addr + 'mute'
         try:
             res = requests.post(url, data=json.dumps(data)).json()
         except:
-            logger.DebugLog(">> 禁言失败")
+            GLOBAL.logger.DebugLog(">> 禁言失败")
             return 0
-        logger.DebugLog(">> 请求返回：" + str(res))
+        GLOBAL.logger.DebugLog(">> 请求返回：" + str(res))
         if res['code'] == 0:
             return res['msg']
 
@@ -260,18 +261,18 @@ class QQBot:
                 voice_url = t2s.upload()
             else:
                 content = "Unknown Error."
-                logger.DebugLog(">> 当前命令类型暂不支持回复：=> " + order)
+                GLOBAL.logger.DebugLog(">> 当前命令类型暂不支持回复：=> " + order)
 
         # if type == 'Plain':
         #     response = getGPTMsg("你是一个可爱的猫娘，你会傲娇地回答问题：", text)
         #     content = response["choices"][0]["message"]["content"]
 
-        logger.DebugLog(">> 消息类型：" + type)
+        GLOBAL.logger.DebugLog(">> 消息类型：" + type)
         if type == 'Plain':
             # message = [{"type": type, "text": content1 + '\n' + content3}]
             message = [{"type": type, "text": content}]
         else:
-            logger.TraceLog(">> 当前消息类型暂不支持回复：=> " + type)
+            GLOBAL.logger.TraceLog(">> 当前消息类型暂不支持回复：=> " + type)
             return 0
         # important!!!
         if order == 'speak' or order == 'repeat':
@@ -282,14 +283,14 @@ class QQBot:
             'quote': ReplyMsgId,
             "messageChain": message
         }
-        logger.DebugLog(">> 消息内容：" + str(data))
+        GLOBAL.logger.DebugLog(">> 消息内容：" + str(data))
         url = self.addr + 'sendGroupMessage'
         try:
             res = requests.post(url, data=json.dumps(data)).json()
         except:
-            logger.DebugLog(">> 回复失败")
+            GLOBAL.logger.DebugLog(">> 回复失败")
             return 0
-        logger.DebugLog(">> 请求返回：" + str(res))
+        GLOBAL.logger.DebugLog(">> 请求返回：" + str(res))
         if res['code'] == 0:
             return res['messageId']
         return 0
@@ -299,11 +300,11 @@ class QQBot:
         for msg in msg_chain:
             if msg['type'] == 'Plain':
                 text = msg['text']
-        logger.DebugLog("Super User: {}".format(text))
+        GLOBAL.logger.DebugLog("Super User: {}".format(text))
         reply_msg, tmout = getGPTMsg("你是一个尽心尽力为主人排忧解难的优秀助手", text, "gpt-4", 800, 60)
         if tmout == 1:
             reply_msg = "抱歉，接口响应有些久哦~请等一会再试试吧！[TIME_OUT]"
-        logger.DebugLog("GPT Reply: {}".format(reply_msg))
+        GLOBAL.logger.DebugLog("GPT Reply: {}".format(reply_msg))
         data = {
             "sessionKey": session,
             "target": qq,
@@ -315,7 +316,7 @@ class QQBot:
         try:
             res = requests.post(url, data=json.dumps(data)).json()
         except:
-            logger.DebugLog(">> 发送失败")
+            GLOBAL.logger.DebugLog(">> 发送失败")
             return 0
         if res['code'] == 0:
             return res['messageId']
@@ -333,16 +334,16 @@ class QQBot:
         try:
             res = requests.post(url, data=json.dumps(data)).json()
         except:
-            logger.DebugLog(">> 发送失败")
+            GLOBAL.logger.DebugLog(">> 发送失败")
             return 0
         if res['code'] == 0:
             return res['messageId']
         return 0
 
 
-logger = Logger()
+# logger = Logger()
 bot = QQBot()
-app = Flask(__name__)
+# app = Flask(__name__)
 
 def getGPTMsg(GodMsg="", Msg="", gpt_model="gpt-3.5-turbo", max_tokens=200, max_time=20):
     if Msg == "":
@@ -403,16 +404,16 @@ def qqReply():
     global t2s
     t2s = Text2Speech(conf['speech_key'],conf['service_region'],conf['container_name'],conf['connect_str'],conf['error_url'])
 
-    logger.setDebugLevel(debug_level)
+    GLOBAL.logger.setDebugLevel(debug_level)
 
     session = bot.verifySession(auth_key)
-    logger.DebugLog(">> session: " + session)
+    GLOBAL.logger.DebugLog(">> session: " + session)
     bot.bindSession(session, bind_qq)
     while True:
         cnt = bot.getMessageCount(session)
         if cnt:
-            logger.DebugLog('>> 有消息了 => {}'.format(cnt))
-            logger.DebugLog('获取消息内容')
+            GLOBAL.logger.DebugLog('>> 有消息了 => {}'.format(cnt))
+            GLOBAL.logger.DebugLog('获取消息内容')
             data = bot.getMsgFromGroup(session)
             # print(type(data[0]))
             print(data[0])
@@ -430,25 +431,25 @@ def qqReply():
                 print("Sender friend: {}".format(sender_friend))
                 if sender_friend not in super_user_list:
                     continue
-                logger.DebugLog('权限用户消息：{}'.format(sender_friend))
+                GLOBAL.logger.DebugLog('权限用户消息：{}'.format(sender_friend))
                 bot.ReplySuperFriend(session, data[0]['messageChain'], sender_friend)
                 continue
 
             ReplyMsgId = data[0]['messageChain'][0]['id']
             print("ReplyMsgId", ReplyMsgId)
             if len(data) == 0:
-                logger.DebugLog('消息为空')
+                GLOBAL.logger.DebugLog('消息为空')
                 continue
-            logger.DebugLog(data)
-            logger.DebugLog('解析消息内容')
+            GLOBAL.logger.DebugLog(data)
+            GLOBAL.logger.DebugLog('解析消息内容')
             At_Bot = bot.checkAtBot(data, bind_qq)
             order, order_task = bot.checkOrder(data)
             # print("AtBot", At_Bot)
             # print("ORDER:",order,order_task)
             msg_chain = copy.deepcopy(data[0]['messageChain'])
             data = bot.parseGroupMsg(data)
-            logger.DebugLog(data)
-            logger.DebugLog('回复消息内容')
+            GLOBAL.logger.DebugLog(data)
+            GLOBAL.logger.DebugLog('回复消息内容')
             # if At_Bot == 0:
             #     continue
             if order == 1:
@@ -461,7 +462,7 @@ def qqReply():
     bot.releaseSession(session, bind_qq)
 
 
-@app.route('/QQ/send', methods=['GET'])
+@GLOBAL.app.route('/QQ/send', methods=['GET'])
 def qqListenMsg():
     # 类似于Qmsg的功能
     # flask做得接收HTTP请求转为QQ消息
@@ -477,4 +478,4 @@ if __name__ == '__main__':
     t.setDaemon(True)
     t.start()
 
-    app.run(port=1145, host='127.0.0.1')
+    GLOBAL.app.run(port=1145, host='127.0.0.1')
