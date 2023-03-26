@@ -18,4 +18,5 @@ Phinney
 ## Acknowledgements
 
 [【教程】万字长文保姆级教你制作自己的多功能QQ机器人 - 小锋学长生活大爆炸](http://xfxuezhang.cn/index.php/archives/418/)
+
 [PyCharm](https://www.jetbrains.com/pycharm/)
