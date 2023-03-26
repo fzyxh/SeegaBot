@@ -1,111 +1,12 @@
 import json
-import os
 import re
 import copy
-
 import requests
 from flask import Flask, request
 from time import sleep
 import threading
-# import openai
-# from dotenv import load_dotenv
-from datetime import datetime
-import azure.cognitiveservices.speech as speechsdk
-from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-from azure.cognitiveservices.speech import SpeechSynthesisOutputFormat
-import pysilk
-# from azure.identity import DefaultAzureCredential
-
-
-# load_dotenv()
-# openai.api_key = os.getenv("OPENAI_API_KEY")
-
-class Logger:
-    def __init__(self, level='debug'):
-        self.level = level
-
-    def DebugLog(self, *args):
-        if self.level == 'debug':
-            print(*args)
-
-    def TraceLog(self, *args):
-        if self.level == 'trace':
-            print(*args)
-
-    def setDebugLevel(self, level):
-        self.level = level.lower()
-
-# ref: https://github.com/MicrosoftDocs/azure-docs.zh-cn/blob/master/articles/cognitive-services/Speech-Service/speech-synthesis-markup.md
-# ref2: https://learn.microsoft.com/zh-tw/dotnet/api/microsoft.cognitiveservices.speech.speechsynthesisoutputformat?view=azure-dotnet#fields
-class Text2Speech:
-    def __init__(self, speech_key, service_region, container_name, connect_str, error_url, set_speech_synthesis_output_format=SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm, Dir='./SpeechResources/'):
-        self.speech_key = speech_key
-        self.service_region = service_region
-        self.container_name = container_name
-        self.connect_str = connect_str
-        self.error_url = error_url
-        self.set_speech_synthesis_output_format = set_speech_synthesis_output_format
-        self.dir = Dir
-        self.error_audio = error_url
-        self.file_dir = "./SpeechResources/"
-        self.file_name = "error.silk"
-    def getVoice(self, text):
-        if text == None or text == "":
-            return self.file_dir + self.file_name
-        speech_config = speechsdk.SpeechConfig(subscription=self.speech_key, region=self.service_region)
-        speech_config.set_speech_synthesis_output_format(self.set_speech_synthesis_output_format)
-        speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config)
-
-        ssml = """
-                <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis"
-                       xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="zh-CN">
-                    <voice name="zh-CN-XiaoyiNeural">
-                        <mstts:express-as role="Girl" style="disgruntled" styledegree="5">
-                            <prosody contour="(60%,-60%) (100%,+80%)">
-                            """ + text + """
-                            </prosody>
-                        </mstts:express-as>
-                    </voice>
-                </speak>
-                """
-        result = speech_synthesizer.speak_ssml_async(ssml).get()
-        audio_name = "Audio" + datetime.now().strftime("%Y%m%d%H%M%S")
-        with open(self.dir + audio_name + ".pcm", 'wb') as audio_file:
-            audio_file.write(result.audio_data)
-        #convert from pcm to silk
-        with open(self.dir + audio_name + ".pcm", "rb") as pcm, open(self.dir + audio_name + ".silk", "wb") as silk:
-            pysilk.encode(pcm, silk, 24000, 24000)
-
-        # Checks result.
-        if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-            print("Speech synthesized to speaker for text [{}]".format(text))
-        elif result.reason == speechsdk.ResultReason.Canceled:
-            cancellation_details = result.cancellation_details
-            print("Speech synthesis canceled: {}".format(cancellation_details.reason))
-            if cancellation_details.reason == speechsdk.CancellationReason.Error:
-                if cancellation_details.error_details:
-                    print("Error details: {}".format(cancellation_details.error_details))
-            print("Did you update the subscription info?")
-        audio_name = audio_name + ".silk"
-        self.file_dir = self.dir
-        self.file_name = audio_name
-        if os.path.exists(self.dir + audio_name):
-            return self.dir + audio_name, audio_name
-        else:
-            return self.error_audio, "error.silk"
-    def upload(self, file_dir=None, file_name=None):
-        blob_service_client = BlobServiceClient.from_connection_string(self.connect_str)
-        blob_client = blob_service_client.get_blob_client(container=self.container_name, blob=self.file_name)
-        with open(file=self.file_dir + self.file_name, mode="rb") as data:
-            try:
-                blob_client.upload_blob(data)
-                return blob_client.url
-            except:
-                return self.error_audio
-            # blob_client.get_blob_properties()
-            # print(result)
-            # print(blob_client.url)
-        return self.error_audio
+from Text2Speech import Text2Speech
+from Logger import Logger
 
 class QQBot:
     def __init__(self):
@@ -210,46 +111,6 @@ class QQBot:
         res = requests.get(url).json()
         if res['code'] == 0:
             return res['data']
-        return 0
-
-    def sendMsgToGroup(self, session, group, msg):
-        text = msg['text']
-        type = msg['type']
-        name = msg['name']
-        group_id = msg['groupId']
-        group_name = msg['groupName']
-        content1 = "【消息中转助手】\n用户：{}\n群号：{}\n群名：{}\n消息：\n{}".format(
-            name, group_id, group_name, text)
-        content2 = "【消息中转助手】\n用户：{}\n群号：{}\n群名：{}\n消息：\n".format(
-            name, group_id, group_name)
-        logger.DebugLog(">> 消息类型：" + type)
-        if type == 'Plain':
-            message = [{"type": type, "text": content1}]
-        elif type == 'Image':
-            message = [
-                {"type": 'Plain', "text": content2},
-                {"type": type, "url": text}]
-        elif type == 'Face':
-            message = [{"type": 'Plain', "text": content2},
-                       {"type": type, "faceId": text}]
-        else:
-            logger.TraceLog(">> 当前消息类型暂不支持转发：=> " + type)
-            return 0
-        data = {
-            "sessionKey": session,
-            "group": group,
-            "messageChain": message
-        }
-        logger.DebugLog(">> 消息内容：" + str(data))
-        url = self.addr + 'sendGroupMessage'
-        try:
-            res = requests.post(url, data=json.dumps(data)).json()
-        except:
-            logger.DebugLog(">> 转发失败")
-            return 0
-        logger.DebugLog(">> 请求返回：" + str(res))
-        if res['code'] == 0:
-            return res['messageId']
         return 0
 
     def ReplyMsgToGroup(self, session, msg, ReplyMsgId):
@@ -379,6 +240,7 @@ class QQBot:
                     voice_text, tmout = getGPTMsg("你是一个可爱的猫娘，你会傲娇地回答问题：", question_text)
                 except:
                     voice_text = ""
+                    tmout = 1
                 if tmout == 1:
                     voice_text = ""
                 t2s.getVoice(voice_text)
@@ -432,29 +294,13 @@ class QQBot:
             return res['messageId']
         return 0
 
-    def sendMsgToAllGroups(self, session, receive_groups, send_groups, msg_data):
-        # 对每条消息进行检查
-        for msg in msg_data:
-            group_id = msg['groupId']
-            # 接收的消息群正确（目前只支持 消息类型）
-            if group_id in receive_groups:
-                # 依次将消息转发到目标群
-                for g in send_groups:
-                    logger.DebugLog(">> 当前群：" + g)
-                    if g == group_id:
-                        logger.DebugLog(">> 跳过此群")
-                        continue
-                    res = self.sendMsgToGroup(session, g, msg)
-                    if res != 0:
-                        logger.TraceLog(">> 转发成功！{}".format(g))
-
     def ReplySuperFriend(self, session, msg_chain, qq):
         text = ""
         for msg in msg_chain:
             if msg['type'] == 'Plain':
                 text = msg['text']
         logger.DebugLog("Super User: {}".format(text))
-        reply_msg, tmout = getGPTMsg("你是一个尽心尽力为主人排忧解难的优秀助手", text, "gpt-4", 500, 60)
+        reply_msg, tmout = getGPTMsg("你是一个尽心尽力为主人排忧解难的优秀助手", text, "gpt-4", 800, 60)
         if tmout == 1:
             reply_msg = "抱歉，接口响应有些久哦~请等一会再试试吧！[TIME_OUT]"
         logger.DebugLog("GPT Reply: {}".format(reply_msg))
@@ -498,52 +344,14 @@ logger = Logger()
 bot = QQBot()
 app = Flask(__name__)
 
-# def qqTransfer():
-#     with open('conf.json', 'r+', encoding="utf-8") as f:
-#         content = f.read()
-#     conf = json.loads(content)
-#
-#     auth_key = conf['auth_key']
-#     bind_qq = conf['bind_qq']
-#     sleep_time = conf['sleep_time']
-#     debug_level = conf['debug_level']
-#
-#     receive_groups = conf['receive_groups']
-#     send_groups = conf['send_groups']
-#
-#     logger.setDebugLevel(debug_level)
-#
-#     session = bot.verifySession(auth_key)
-#     logger.DebugLog(">> session: " + session)
-#     bot.bindSession(session, bind_qq)
-#     while True:
-#         cnt = bot.getMessageCount(session)
-#         if cnt:
-#             logger.DebugLog('>> 有消息了 => {}'.format(cnt))
-#             logger.DebugLog('获取消息内容')
-#             data = bot.getMsgFromGroup(session)
-#             if len(data) == 0:
-#                 logger.DebugLog('消息为空')
-#                 continue
-#             logger.DebugLog(data)
-#             logger.DebugLog('解析消息内容')
-#             data = bot.parseGroupMsg(data)
-#             logger.DebugLog(data)
-#             logger.DebugLog('转发消息内容')
-#             bot.sendMsgToAllGroups(session, receive_groups, send_groups, data)
-#         # else:
-#         #	 logger.DebugLog('空闲')
-#         sleep(sleep_time)
-#     bot.releaseSession(session, bind_qq)
-
 def getGPTMsg(GodMsg="", Msg="", gpt_model="gpt-3.5-turbo", max_tokens=200, max_time=20):
     if Msg == "":
-        return "抱歉，人家暂时没想好该怎么回答你哦~[TIME_OUT]", 0
+        return "抱歉，人家暂时没想好该怎么回答你哦~[TIME_OUT]", 1
     with open('conf.json', 'r+', encoding="utf-8") as f:
         content = f.read()
     conf = json.loads(content)
     API2d_key = conf['API2d_key']
-    url = "https://openai.api2d.net/v1/chat/completions"
+    url = "https://openai.api2d.net/v1/chat/completions" # openai api is limited in China Mainland
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {API2d_key}"
@@ -591,10 +399,6 @@ def qqReply():
     debug_level = conf['debug_level']
     order_list = conf['order_list']
     super_user_list = conf['super_users']
-
-    receive_groups = conf['receive_groups']
-    send_groups = conf['send_groups']
-    manage_groups = conf['manage_groups']
 
     global t2s
     t2s = Text2Speech(conf['speech_key'],conf['service_region'],conf['container_name'],conf['connect_str'],conf['error_url'])
@@ -673,4 +477,4 @@ if __name__ == '__main__':
     t.setDaemon(True)
     t.start()
 
-    app.run(port='1145', host='127.0.0.1')
+    app.run(port=1145, host='127.0.0.1')
