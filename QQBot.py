@@ -48,57 +48,54 @@ class QQBot:
             return res['data']
         return None
 
-    def parseGroupMsg(self, data):
+    def parseGroupMsg(self, item):
         res = []
-        if data is None:
+        if item is None:
             return res
-        for item in data:
-            if item['type'] == 'GroupMessage':
-                type = item['messageChain'][-1]['type']
-                if type == 'Image':
-                    text = item['messageChain'][-1]['url']
-                elif type == 'Plain':
-                    text = item['messageChain'][-1]['text']
-                elif type == 'Face':
-                    text = item['messageChain'][-1]['faceId']
-                else:
-                    GLOBAL.logger.TraceLog(">> 当前消息类型暂不支持转发：=> " + type)
-                    continue
-                name = item['sender']['memberName']
-                group_id = str(item['sender']['group']['id'])
-                group_name = item['sender']['group']['name']
-                res.append({'text': text, 'type': type, 'name': name, 'groupId': group_id, 'groupName': group_name})
+        if item['type'] == 'GroupMessage':
+            type = item['messageChain'][-1]['type']
+            if type == 'Image':
+                text = item['messageChain'][-1]['url']
+            elif type == 'Plain':
+                text = item['messageChain'][-1]['text']
+            elif type == 'Face':
+                text = item['messageChain'][-1]['faceId']
+            else:
+                text = ''
+                GLOBAL.logger.TraceLog(">> 当前消息类型暂不支持：=> " + type)
+            name = item['sender']['memberName']
+            group_id = str(item['sender']['group']['id'])
+            group_name = item['sender']['group']['name']
+            res.append({'text': text, 'type': type, 'name': name, 'groupId': group_id, 'groupName': group_name})
         return res
 
-    def checkAtBot(self, data, BotQQ):
-        if data is None:
+    def checkAtBot(self, item, BotQQ):
+        if item is None:
             return 0
-        for item in data:
-            if item['type'] == 'GroupMessage':
-                for item2 in item['messageChain']:
-                    type = item2['type']
-                    # print(type)
-                    # if type == 'At':
-                        # print(type, item2['target'], BotQQ)
-                        # print(type(item2['target']), type(BotQQ))
-                    if type == 'At' and str(item2['target'])==str(BotQQ):
-                        return 1
+        if item['type'] == 'GroupMessage':
+            for item2 in item['messageChain']:
+                type = item2['type']
+                # print(type)
+                # if type == 'At':
+                    # print(type, item2['target'], BotQQ)
+                    # print(type(item2['target']), type(BotQQ))
+                if type == 'At' and str(item2['target'])==str(BotQQ):
+                    return 1
         return 0
 
-    def checkOrder(self, data):
+    def checkOrder(self, item):
         pattern = r'^[ ]*\/[0-9a-zA-Z_]+'
-        if data is None:
-            return 0
-        for item in data:
-            if item['type'] == 'GroupMessage':
-                for item2 in item['messageChain']:
-                    type = item2['type']
-                    if type == 'Plain':
-                        matches = re.findall(pattern,item2['text'],re.MULTILINE)
-                        # print("matches", matches)
-                        if len(matches) > 0:
-                            return 1, matches[0].split('/')[1]
-                    # print(type)
+        if item is None:
+            return 0, ''
+        if item['type'] == 'GroupMessage':
+            for item2 in item['messageChain']:
+                type = item2['type']
+                if type == 'Plain':
+                    matches = re.findall(pattern,item2['text'],re.MULTILINE)
+                    # print("matches", matches)
+                    if len(matches) > 0:
+                        return 1, matches[0].split('/')[1]
+                # print(type)
         return 0, ''
 
     def getMessageCount(self, session):

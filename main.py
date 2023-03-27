@@ -19,8 +19,6 @@ def qqReply():
     order_list = conf['order_list']
     super_user_list = conf['super_users']
 
-    # GLOBAL.t2s = Text2Speech(conf['speech_key'],conf['service_region'],conf['container_name'],conf['connect_str'],conf['error_url'])
-
     GLOBAL.logger.setDebugLevel(debug_level)
 
     session = GLOBAL.bot.verifySession(auth_key)
@@ -32,47 +30,50 @@ def qqReply():
             GLOBAL.logger.DebugLog('>> 有消息了 => {}'.format(cnt))
             GLOBAL.logger.DebugLog('获取消息内容')
             data = GLOBAL.bot.getMsgFromGroup(session)
-            # print(type(data[0]))
-            print(data[0])
-            # ignore private chat and none-chat message
-            if 'messageChain' not in data[0]:
-                continue
-            if data[0]['type'] != 'GroupMessage' and data[0]['type'] != 'FriendMessage':
-                continue
-
-            if data[0]['type'] == 'FriendMessage':
-                try:
-                    sender_friend = str(data[0]['sender']['id'])
-                except:
-                    sender_friend = ''
-                print("Sender friend: {}".format(sender_friend))
-                if sender_friend not in super_user_list:
+            print("消息内容：")
+            # print(type(data))
+            print(data)
+            for data0 in data:
+                if 'messageChain' not in data0:
                     continue
-                GLOBAL.logger.DebugLog('权限用户消息：{}'.format(sender_friend))
-                GLOBAL.bot.ReplySuperFriend(session, data[0]['messageChain'], sender_friend)
-                continue
+                if data0['type'] != 'GroupMessage' and data0['type'] != 'FriendMessage':
+                    continue
 
-            ReplyMsgId = data[0]['messageChain'][0]['id']
-            print("ReplyMsgId", ReplyMsgId)
-            if len(data) == 0:
-                GLOBAL.logger.DebugLog('消息为空')
-                continue
-            GLOBAL.logger.DebugLog(data)
-            GLOBAL.logger.DebugLog('解析消息内容')
-            At_Bot = GLOBAL.bot.checkAtBot(data, bind_qq)
-            order, order_task = GLOBAL.bot.checkOrder(data)
-            # print("AtBot", At_Bot)
-            # print("ORDER:",order,order_task)
-            msg_chain = copy.deepcopy(data[0]['messageChain'])
-            data = GLOBAL.bot.parseGroupMsg(data)
-            GLOBAL.logger.DebugLog(data)
-            GLOBAL.logger.DebugLog('回复消息内容')
-            # if At_Bot == 0:
-            #     continue
-            if order == 1:
-                GLOBAL.bot.ReplyOrder(session, data[0], order_task, order_list, msg_chain, int(ReplyMsgId))
-            elif At_Bot == 1:
-                GLOBAL.bot.ReplyMsgToGroup(session, data[0], int(ReplyMsgId))
+                if data0['type'] == 'FriendMessage':
+                    try:
+                        sender_friend = str(data0['sender']['id'])
+                    except:
+                        sender_friend = ''
+                    # print("Sender friend: {}".format(sender_friend))
+                    if sender_friend not in super_user_list:
+                        continue
+                    # GLOBAL.logger.DebugLog('权限用户消息：{}'.format(sender_friend))
+                    GLOBAL.bot.ReplySuperFriend(session, data0['messageChain'], sender_friend)
+                    continue
+
+                ReplyMsgId = data0['messageChain'][0]['id']
+                print("ReplyMsgId", ReplyMsgId)
+                if len(data) == 0:
+                    GLOBAL.logger.DebugLog('消息为空')
+                    continue
+                # GLOBAL.logger.DebugLog(data0)
+                GLOBAL.logger.DebugLog('解析消息内容')
+                At_Bot = GLOBAL.bot.checkAtBot(data0, bind_qq)
+                order, order_task = GLOBAL.bot.checkOrder(data0)
+                # print("AtBot", At_Bot)
+                # print("ORDER:",order,order_task)
+                msg_chain = copy.deepcopy(data0['messageChain'])
+                data = GLOBAL.bot.parseGroupMsg(data0)
+                GLOBAL.logger.DebugLog(data)
+                GLOBAL.logger.DebugLog('回复消息内容')
+                # if At_Bot == 0:
+                #     continue
+                GLOBAL.logger.DebugLog('data0: {}'.format(data0))
+                GLOBAL.logger.DebugLog('data: {}'.format(data))
+                if order == 1:
+                    GLOBAL.bot.ReplyOrder(session, data[0], order_task, order_list, msg_chain, int(ReplyMsgId))
+                elif At_Bot == 1:
+                    GLOBAL.bot.ReplyMsgToGroup(session, data[0], int(ReplyMsgId))
         # else:
         #	 logger.DebugLog('空闲')
         sleep(sleep_time)
