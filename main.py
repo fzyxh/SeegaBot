@@ -68,8 +68,8 @@ def qqReply():
                 GLOBAL.logger.DebugLog('回复消息内容')
                 # if At_Bot == 0:
                 #     continue
-                GLOBAL.logger.DebugLog('data0: {}'.format(data0))
-                GLOBAL.logger.DebugLog('data: {}'.format(data))
+                # GLOBAL.logger.DebugLog('data0: {}'.format(data0))
+                # GLOBAL.logger.DebugLog('data: {}'.format(data))
                 if order == 1:
                     GLOBAL.bot.ReplyOrder(session, data[0], order_task, order_list, msg_chain, int(ReplyMsgId))
                 elif At_Bot == 1:
