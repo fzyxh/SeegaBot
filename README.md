@@ -5,6 +5,7 @@ The code is in a mass, but I will optimize it soon.
 
 ## Function
 - [x] Reply Message as `gpt-3.5-turbo`/`gpt-4`
+- [x] Generate Img by `DALL-E`
 - [x] Use Azure TTS to send audio prompted by ChatGPT
 - [x] use /ORDER to execute more commands like mute group member, kick group member and so on.
 - [ ] ...
