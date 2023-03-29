@@ -250,6 +250,31 @@ class QQBot:
                     voice_text = ""
                 GLOBAL.t2s.getVoice(voice_text)
                 voice_url = GLOBAL.t2s.upload()
+            elif order == "gpt4":
+                try:
+                    question_text = text.split('/gpt4', 1)[1]
+                    content, tmout = getGPTMsg("你是一个可爱的猫娘，你会傲娇地回答问题：", question_text, "gpt-4-0314", 1000, 60)
+                except:
+                    content = "抱歉，人家暂时没想好该怎么回答你哦~[EXCEPTION_HANDLING_GPT4]"
+                    tmout = 1
+            elif order == "gptmodel":
+                try:
+                    text2 = text.split('/gptmodel', 1)[1]
+                    print("text2:{}".format(text2))
+                    question_text = text2.split(' ',2)
+                    # print(question_text)
+                    content, tmout = getGPTMsg("你是一个可爱的猫娘，你会傲娇地回答问题：", question_text[2], question_text[1], 1000, 60)
+                except:
+                    content = "抱歉，人家暂时没想好该怎么回答你哦~[EXCEPTION_HANDLING_GPTMODEL]"
+                    tmout = 1
+            elif order == "creatimg":
+                try:
+                    question_text = text.split('/creatimg', 1)[1]
+                    # print(question_text)
+                    content_url, tmout = getGPTImg(question_text, 60)
+                except:
+                    content_url = "抱歉，人家暂时没想好该怎么回答你哦~[EXCEPTION_HANDLING_DALLE]"
+                    tmout = 1
             else:
                 content = "Unknown Error."
                 GLOBAL.logger.DebugLog(">> 当前命令类型暂不支持回复：=> " + order)
@@ -268,6 +293,8 @@ class QQBot:
         # important!!!
         if order == 'speak' or order == 'repeat':
             message = [{"type": "Voice", "url": voice_url}]
+        if order == 'creatimg' and tmout == 0:
+            message= [{"type": "Image", "url": content_url}]
         data = {
             "sessionKey": session,
             "group": group_id,
@@ -292,7 +319,7 @@ class QQBot:
             if msg['type'] == 'Plain':
                 text = msg['text']
         GLOBAL.logger.DebugLog("Super User: {}".format(text))
-        reply_msg, tmout = getGPTMsg("你是一个尽心尽力为主人排忧解难的优秀助手", text, "gpt-4", 800, 60)
+        reply_msg, tmout = getGPTMsg("你是一个尽心尽力为主人排忧解难的优秀助手", text, "gpt-4", 1000, 60)
         if tmout == 1:
             reply_msg = "抱歉，接口响应有些久哦~请等一会再试试吧！[TIME_OUT]"
         GLOBAL.logger.DebugLog("GPT Reply: {}".format(reply_msg))
@@ -336,14 +363,18 @@ class QQBot:
 
 # app = Flask(__name__)
 
-def getGPTMsg(GodMsg="", Msg="", gpt_model="gpt-3.5-turbo", max_tokens=200, max_time=20):
+# reference: https://platform.openai.com/docs/models
+def getGPTMsg(GodMsg="", Msg="", gpt_model="gpt-3.5-turbo", max_tokens=1000, max_time=20):
     if Msg == "":
         return "抱歉，人家暂时没想好该怎么回答你哦~[TIME_OUT]", 1
     with open('conf.json', 'r+', encoding="utf-8") as f:
         content = f.read()
     conf = json.loads(content)
-    API2d_key = conf['API2d_key']
-    url = "https://openai.api2d.net/v1/chat/completions" # openai api is limited in China Mainland
+    # API2d_key = conf['API2d_key']
+    # url = "https://openai.api2d.net/v1/chat/completions" # openai api is limited in China Mainland
+    domain = conf['openai_domain']
+    API2d_key = conf['openai_key']
+    url = "https://" + domain + "/v1/chat/completions"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {API2d_key}"
@@ -361,6 +392,41 @@ def getGPTMsg(GodMsg="", Msg="", gpt_model="gpt-3.5-turbo", max_tokens=200, max_
         js_resp = json.loads(str(response.content, 'utf-8'))
         print(js_resp)
         resp = js_resp["choices"][0]["message"]["content"]
+        tmout = 0
+    except:
+        resp = "抱歉，人家暂时没想好该怎么回答你哦~[TIME_OUT]"
+        tmout = 1
+    # print("response",response.content)
+    return resp, tmout
+
+# reference: https://platform.openai.com/docs/guides/images/usage?lang=curl
+def getGPTImg(Msg="", max_time=30):
+    if Msg == "":
+        return "抱歉，人家暂时没想好该怎么回答你哦~[TIME_OUT]", 1
+    with open('conf.json', 'r+', encoding="utf-8") as f:
+        content = f.read()
+    conf = json.loads(content)
+    # API2d_key = conf['API2d_key']
+    # url = "https://openai.api2d.net/v1/chat/completions" # openai api is limited in China Mainland
+    domain = conf['openai_domain']
+    API2d_key = conf['openai_key']
+    url = "https://"+ domain + "/v1/images/generations"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API2d_key}"
+    }
+    data = {
+        "prompt": Msg,
+        "n": 1, # how many img do you want once
+        "size": "1024x1024",
+        "response_format": "url"
+    }
+    try:
+        response = GLOBAL.s.post(url, headers=headers, data=json.dumps(data),verify=False, timeout=max_time)
+        js_resp = json.loads(str(response.content, 'utf-8'))
+        print(js_resp)
+        resp = js_resp["data"][0]["url"]
+        # print("IMG url: {}".format(resp))
         tmout = 0
     except:
         resp = "抱歉，人家暂时没想好该怎么回答你哦~[TIME_OUT]"
