@@ -220,9 +220,9 @@ class QQBot:
         else:
             if order == "h":
                 content = "◆ Order List:\n" + "\n".join(str(i) for i in order_list)
-                + "\n"
+                content = content + "\nTo get order details, please enter /h ORDER."
             elif order == "whoami":
-                content = "I'm a bot Powered by Mirai-Core, and my author is Phinney."
+                content = "I'm a bot Powered by Mirai-Core, and my author is Phinney.\n" + "To get more information, please visit https://github.com/fzyxh/SeegaBot."
             elif order == "revoke":
                 revoke_name, quote_id = getReplyMsgId(msg_chain)
                 GLOBAL.bot.revokeMsgGroup(session, group_id, quote_id)
