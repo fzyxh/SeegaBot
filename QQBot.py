@@ -1,5 +1,8 @@
 import re
 import json
+from io import BytesIO
+from PIL import Image
+import urllib.request
 import requests
 import GLOBAL
 
@@ -92,7 +95,7 @@ class QQBot:
                 type = item2['type']
                 if type == 'Plain':
                     matches = re.findall(pattern,item2['text'],re.MULTILINE)
-                    # print("matches", matches)
+                    # print("Order matches", matches)
                     if len(matches) > 0:
                         return 1, matches[0].split('/')[1]
                 # print(type)
@@ -198,6 +201,7 @@ class QQBot:
             return res['msg']
 
     def ReplyOrder(self, session, msg, order, order_list, msg_chain, ReplyMsgId):
+        print("ReplyOrder")
         global voice_url
         text = msg['text']
         type = msg['type']
@@ -209,7 +213,8 @@ class QQBot:
         quote_id = 0
         voice_url = "./SpeechResources/error.mp3"
         if type != 'Plain':
-            return 0
+            if order != "editimg": # special check TODO:Debug here
+                return 0
         if order not in order_list:
             content = "Your order is not in the order list. Enter /h to get more information."
         else:
@@ -275,6 +280,18 @@ class QQBot:
                 except:
                     content_url = "抱歉，人家暂时没想好该怎么回答你哦~[EXCEPTION_HANDLING_DALLE]"
                     tmout = 1
+            elif order == "editimg":
+                try:
+                    type = "Plain"
+                    # question_text = text.split('/editimg', 1)[1]
+                    question_text, img_raw_url = getImgUrl(msg_chain)
+                    question_text = question_text.split('/editimg', 1)[1]
+                    print(question_text, img_raw_url)
+                    # print(question_text)
+                    content_url, tmout = getGPTEditImg(question_text, img_raw_url, 60)
+                except:
+                    content_url = "抱歉，人家暂时没想好该怎么回答你哦~[EXCEPTION_HANDLING_DALLE_EDIT]"
+                    tmout = 1
             else:
                 content = "Unknown Error."
                 GLOBAL.logger.DebugLog(">> 当前命令类型暂不支持回复：=> " + order)
@@ -293,7 +310,7 @@ class QQBot:
         # important!!!
         if order == 'speak' or order == 'repeat':
             message = [{"type": "Voice", "url": voice_url}]
-        if order == 'creatimg' and tmout == 0:
+        if (order == 'creatimg' or order == 'editimg') and tmout == 0:
             message= [{"type": "Image", "url": content_url}]
         data = {
             "sessionKey": session,
@@ -319,7 +336,7 @@ class QQBot:
             if msg['type'] == 'Plain':
                 text = msg['text']
         GLOBAL.logger.DebugLog("Super User: {}".format(text))
-        reply_msg, tmout = getGPTMsg("你是一个尽心尽力为主人排忧解难的优秀助手", text, "gpt-4", 1000, 60)
+        reply_msg, tmout = getGPTMsg("你是一个尽心尽力为主人排忧解难的优秀助手", text, "gpt-4", 1000, 120)
         if tmout == 1:
             reply_msg = "抱歉，接口响应有些久哦~请等一会再试试吧！[TIME_OUT]"
         GLOBAL.logger.DebugLog("GPT Reply: {}".format(reply_msg))
@@ -364,7 +381,7 @@ class QQBot:
 # app = Flask(__name__)
 
 # reference: https://platform.openai.com/docs/models
-def getGPTMsg(GodMsg="", Msg="", gpt_model="gpt-3.5-turbo", max_tokens=1000, max_time=20):
+def getGPTMsg(GodMsg="", Msg="", gpt_model="gpt-3.5-turbo", max_tokens=1000, max_time=40):
     if Msg == "":
         return "抱歉，人家暂时没想好该怎么回答你哦~[TIME_OUT]", 1
     with open('conf.json', 'r+', encoding="utf-8") as f:
@@ -433,9 +450,56 @@ def getGPTImg(Msg="", max_time=30):
         tmout = 1
     # print("response",response.content)
     return resp, tmout
+# reference: https://platform.openai.com/docs/guides/images/usage?lang=curl
+def getGPTEditImg(Msg="", ImgUrl="", max_time=30):
+    if Msg == "" or ImgUrl == "":
+        return "抱歉，人家暂时没想好该怎么回答你哦~[TIME_OUT]", 1
+    urllib.request.urlretrieve(ImgUrl, "Img2Edit.png")
+    img = Image.open("Img2Edit.png")
+    width, height = 512, 512
+    img = img.resize((width, height))
+    # Convert the image to a BytesIO object
+    byte_stream = BytesIO()
+    img.save(byte_stream, format='PNG')
+    byte_array = byte_stream.getvalue()
+
+    with open('conf.json', 'r+', encoding="utf-8") as f:
+        content = f.read()
+    conf = json.loads(content)
+    # API2d_key = conf['API2d_key']
+    # url = "https://openai.api2d.net/v1/chat/completions" # openai api is limited in China Mainland
+    domain = conf['openai_domain']
+    API2d_key = conf['openai_key']
+    url = "https://"+ domain + "/v1/images/edits"
+    headers = {
+        "Content-Type": "multipart/form-data",
+        "Authorization": f"Bearer {API2d_key}"
+    }
+    # print("EditImg2:{}".format(byte_array))
+    data = {
+        "image": byte_array.decode('utf-8'),
+        "prompt": Msg,
+        "n": 1, # how many img do you want once
+        "size": "1024x1024",
+        "response_format": "url"
+    }
+    print("EditImg3")
+    try:
+        response = GLOBAL.s.post(url, headers=headers, data=json.dumps(data),verify=False, timeout=max_time)
+        js_resp = json.loads(str(response.content, 'utf-8'))
+        print(js_resp)
+        resp = js_resp["data"][0]["url"]
+        # print("IMG url: {}".format(resp))
+        tmout = 0
+    except:
+        print("ERROR on EditImg")
+        resp = "抱歉，人家暂时没想好该怎么回答你哦~[TIME_OUT]"
+        tmout = 1
+    # print("response",response.content)
+    return resp, tmout
 
 def getReplyMsgId(msg_chain):
-    print("msg_chain", msg_chain)
+    # print("msg_chain", msg_chain)
     sender_id = "Unknown"
     quote_id = 0
     for msg in msg_chain:
@@ -445,3 +509,14 @@ def getReplyMsgId(msg_chain):
             # logger.DebugLog('>> 撤回消息 => {} {}'.format(sender_id, quote_id))
             return sender_id, quote_id
     return sender_id, quote_id
+
+def getImgUrl(msg_chain):
+    # print("img_url: msg_chain", msg_chain)
+    img_url = ""
+    text = ""
+    for msg in msg_chain:
+        if msg["type"] == "Image":
+            img_url = msg["url"]
+        if msg["type"] == "Plain":
+            text += msg["text"]
+    return text, img_url
