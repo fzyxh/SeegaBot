@@ -272,9 +272,9 @@ class QQBot:
                 except:
                     content = "抱歉，人家暂时没想好该怎么回答你哦~[EXCEPTION_HANDLING_GPTMODEL]"
                     tmout = 1
-            elif order == "creatimg":
+            elif order == "createimg":
                 try:
-                    question_text = text.split('/creatimg', 1)[1]
+                    question_text = text.split('/createimg', 1)[1]
                     # print(question_text)
                     content_url, tmout = getGPTImg(question_text, 60)
                 except:
@@ -310,7 +310,7 @@ class QQBot:
         # important!!!
         if order == 'speak' or order == 'repeat':
             message = [{"type": "Voice", "url": voice_url}]
-        if (order == 'creatimg' or order == 'editimg') and tmout == 0:
+        if (order == 'createimg' or order == 'editimg') and tmout == 0:
             message= [{"type": "Image", "url": content_url}]
         data = {
             "sessionKey": session,
