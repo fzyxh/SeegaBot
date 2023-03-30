@@ -456,12 +456,11 @@ def getGPTEditImg(Msg="", ImgUrl="", max_time=30):
         return "抱歉，人家暂时没想好该怎么回答你哦~[TIME_OUT]", 1
     urllib.request.urlretrieve(ImgUrl, "Img2Edit.png")
     img = Image.open("Img2Edit.png")
-    width, height = 512, 512
+    img = img.convert('RGBA')
+    width, height = 1024, 1024
     img = img.resize((width, height))
     # Convert the image to a BytesIO object
-    byte_stream = BytesIO()
-    img.save(byte_stream, format='PNG')
-    byte_array = byte_stream.getvalue()
+    img.save("ImgResize.png", format='PNG')
 
     with open('conf.json', 'r+', encoding="utf-8") as f:
         content = f.read()
@@ -472,20 +471,22 @@ def getGPTEditImg(Msg="", ImgUrl="", max_time=30):
     API2d_key = conf['openai_key']
     url = "https://"+ domain + "/v1/images/edits"
     headers = {
-        "Content-Type": "multipart/form-data",
+        # "Content-Type": "multipart/form-data",
         "Authorization": f"Bearer {API2d_key}"
     }
-    # print("EditImg2:{}".format(byte_array))
+    file = {
+        "image": ("ImgResize.png", open("ImgResize.png","rb"), 'image/png', {}),
+        # "mask": ("jbmask.png", open("jbmask2.png", "rb"), 'image/png', {})
+    }
     data = {
-        "image": byte_array.decode('utf-8'),
         "prompt": Msg,
         "n": 1, # how many img do you want once
         "size": "1024x1024",
         "response_format": "url"
     }
-    print("EditImg3")
+    # print("EditImg3")
     try:
-        response = GLOBAL.s.post(url, headers=headers, data=json.dumps(data),verify=False, timeout=max_time)
+        response = GLOBAL.s.post(url, headers=headers, files=file, data=data, verify=False, timeout=max_time)
         js_resp = json.loads(str(response.content, 'utf-8'))
         print(js_resp)
         resp = js_resp["data"][0]["url"]
