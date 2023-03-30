@@ -220,16 +220,17 @@ class QQBot:
         else:
             if order == "h":
                 content = "◆ Order List:\n" + "\n".join(str(i) for i in order_list)
+                + "\n"
             elif order == "whoami":
                 content = "I'm a bot Powered by Mirai-Core, and my author is Phinney."
             elif order == "revoke":
                 revoke_name, quote_id = getReplyMsgId(msg_chain)
-                bot.revokeMsgGroup(session, group_id, quote_id)
+                GLOBAL.bot.revokeMsgGroup(session, group_id, quote_id)
                 content = name + "认为" + revoke_name + "发送了不当内容，已予以撤回。如有疑问请联系管理员处理。"
             elif order == "kick":
                 kick_name, quote_id = getReplyMsgId(msg_chain)
-                bot.revokeMsgGroup(session, group_id, quote_id)
-                bot.muteMemberGroup(session, int(group_id), int(kick_name))
+                GLOBAL.bot.revokeMsgGroup(session, group_id, quote_id)
+                GLOBAL.bot.muteMemberGroup(session, int(group_id), int(kick_name))
                 content = name + "认为" + kick_name + "发送了不当内容，已予以撤回并禁言。如有疑问请联系管理员处理。"
             elif order == "speak":
                 try:
