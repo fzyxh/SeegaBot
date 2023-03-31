@@ -259,7 +259,7 @@ class QQBot:
             elif order == "gpt4":
                 try:
                     question_text = text.split('/gpt4', 1)[1]
-                    content, tmout = getGPTMsg("你是一个可爱的猫娘，你会傲娇地回答问题：", question_text, "gpt-4-0314", 1000, 60)
+                    content, tmout = getGPTMsg("你是一个可爱的猫娘，你会傲娇地回答问题：", question_text, "gpt-4-0314", 2000, 60)
                 except:
                     content = "抱歉，人家暂时没想好该怎么回答你哦~[EXCEPTION_HANDLING_GPT4]"
                     tmout = 1
@@ -269,7 +269,7 @@ class QQBot:
                     print("text2:{}".format(text2))
                     question_text = text2.split(' ',2)
                     # print(question_text)
-                    content, tmout = getGPTMsg("你是一个可爱的猫娘，你会傲娇地回答问题：", question_text[2], question_text[1], 1000, 60)
+                    content, tmout = getGPTMsg("你是一个可爱的猫娘，你会傲娇地回答问题：", question_text[2], question_text[1], 2000, 60)
                 except:
                     content = "抱歉，人家暂时没想好该怎么回答你哦~[EXCEPTION_HANDLING_GPTMODEL]"
                     tmout = 1
@@ -337,7 +337,7 @@ class QQBot:
             if msg['type'] == 'Plain':
                 text = msg['text']
         GLOBAL.logger.DebugLog("Super User: {}".format(text))
-        reply_msg, tmout = getGPTMsg("你是一个尽心尽力为主人排忧解难的优秀助手", text, "gpt-4", 1000, 120)
+        reply_msg, tmout = getGPTMsg("你是一个尽心尽力为主人排忧解难的优秀助手", text, "gpt-4", 2000, 120)
         if tmout == 1:
             reply_msg = "抱歉，接口响应有些久哦~请等一会再试试吧！[TIME_OUT]"
         GLOBAL.logger.DebugLog("GPT Reply: {}".format(reply_msg))
@@ -382,7 +382,7 @@ class QQBot:
 # app = Flask(__name__)
 
 # reference: https://platform.openai.com/docs/models
-def getGPTMsg(GodMsg="", Msg="", gpt_model="gpt-3.5-turbo", max_tokens=1000, max_time=40):
+def getGPTMsg(GodMsg="", Msg="", gpt_model="gpt-3.5-turbo", max_tokens=3000, max_time=40):
     if Msg == "":
         return "抱歉，人家暂时没想好该怎么回答你哦~[TIME_OUT]", 1
     with open('conf.json', 'r+', encoding="utf-8") as f:
